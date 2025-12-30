@@ -6,7 +6,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:14-alpine
+    image: postgres:17-alpine
     container_name: healthhub-postgres-dev
     environment:
       POSTGRES_USER: healthhub
