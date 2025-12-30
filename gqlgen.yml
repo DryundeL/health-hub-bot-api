@@ -1,0 +1,32 @@
+# GraphQL configuration
+schema:
+  - graphql/schema.graphql
+
+exec:
+  filename: graphql/generated/generated.go
+  package: generated
+
+model:
+  filename: graphql/generated/models_gen.go
+  package: generated
+
+resolver:
+  layout: follow-schema
+  dir: internal/presentation/graphql
+  package: graphql
+
+autobind:
+  - "github.com/health-hub-bot-api/internal/domain/user"
+  - "github.com/health-hub-bot-api/internal/domain/symptom"
+  - "github.com/health-hub-bot-api/internal/domain/analysis"
+  - "github.com/health-hub-bot-api/internal/domain/medication"
+  - "github.com/health-hub-bot-api/internal/domain/doctorvisit"
+
+models:
+  Time:
+    model: time.Time
+  Date:
+    model: time.Time
+  Upload:
+    model: github.com/99designs/gqlgen/graphql.Upload
+

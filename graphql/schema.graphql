@@ -1,0 +1,336 @@
+scalar Time
+scalar Date
+scalar Upload
+
+type Query {
+  # User
+  me: User
+  
+  # Symptoms
+  symptoms(filter: SymptomFilter, limit: Int, offset: Int): SymptomConnection!
+  symptom(id: ID!): SymptomEntry
+  
+  # Analyses
+  analyses(filter: AnalysisFilter, limit: Int, offset: Int): AnalysisConnection!
+  analysis(id: ID!): Analysis
+  
+  # Medications
+  medications(activeOnly: Boolean): [Medication!]!
+  medication(id: ID!): Medication
+  medicationIntakes(medicationId: ID!, date: Date): [MedicationIntake!]!
+  
+  # Doctor Visits
+  doctorVisits(limit: Int, offset: Int): DoctorVisitConnection!
+  doctorVisit(id: ID!): DoctorVisit
+  doctorVisitReport(visitId: ID!, startDate: Date, endDate: Date): DoctorVisitReport
+}
+
+type Mutation {
+  # User
+  updateUserProfile(input: UpdateUserProfileInput!): User!
+  
+  # Symptoms
+  createSymptomEntry(input: CreateSymptomEntryInput!): SymptomEntry!
+  updateSymptomEntry(id: ID!, input: UpdateSymptomEntryInput!): SymptomEntry!
+  deleteSymptomEntry(id: ID!): Boolean!
+  
+  # Analyses
+  createAnalysis(input: CreateAnalysisInput!): Analysis!
+  updateAnalysis(id: ID!, input: UpdateAnalysisInput!): Analysis!
+  deleteAnalysis(id: ID!): Boolean!
+  
+  # Medications
+  createMedication(input: CreateMedicationInput!): Medication!
+  updateMedication(id: ID!, input: UpdateMedicationInput!): Medication!
+  deleteMedication(id: ID!): Boolean!
+  markMedicationIntake(input: MarkMedicationIntakeInput!): MedicationIntake!
+  
+  # Doctor Visits
+  createDoctorVisit(input: CreateDoctorVisitInput!): DoctorVisit!
+  updateDoctorVisit(id: ID!, input: UpdateDoctorVisitInput!): DoctorVisit!
+  deleteDoctorVisit(id: ID!): Boolean!
+  generateDoctorVisitReport(visitId: ID!, startDate: Date, endDate: Date): DoctorVisitReport!
+}
+
+# User Types
+type User {
+  id: ID!
+  telegramUserId: String!
+  name: String!
+  age: Int
+  gender: Gender
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+input UpdateUserProfileInput {
+  name: String
+  age: Int
+  gender: Gender
+}
+
+# Symptom Types
+type SymptomEntry {
+  id: ID!
+  userId: ID!
+  dateTime: Time!
+  description: String!
+  wellbeingScale: Int!
+  temperature: Float
+  bloodPressureSystolic: Int
+  bloodPressureDiastolic: Int
+  pulse: Int
+  photoUrl: String
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+input SymptomFilter {
+  startDate: Date
+  endDate: Date
+  minWellbeingScale: Int
+  maxWellbeingScale: Int
+}
+
+input CreateSymptomEntryInput {
+  dateTime: Time!
+  description: String!
+  wellbeingScale: Int!
+  temperature: Float
+  bloodPressureSystolic: Int
+  bloodPressureDiastolic: Int
+  pulse: Int
+  photo: Upload
+}
+
+input UpdateSymptomEntryInput {
+  dateTime: Time
+  description: String
+  wellbeingScale: Int
+  temperature: Float
+  bloodPressureSystolic: Int
+  bloodPressureDiastolic: Int
+  pulse: Int
+  photo: Upload
+}
+
+type SymptomConnection {
+  edges: [SymptomEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type SymptomEdge {
+  node: SymptomEntry!
+  cursor: String!
+}
+
+# Analysis Types
+type Analysis {
+  id: ID!
+  userId: ID!
+  type: AnalysisType!
+  name: String!
+  dateTaken: Date!
+  fileUrl: String!
+  fileType: FileType!
+  nextReminderDate: Date
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum AnalysisType {
+  BLOOD
+  URINE
+  ULTRASOUND
+  XRAY
+  OTHER
+}
+
+enum FileType {
+  IMAGE
+  PDF
+}
+
+input AnalysisFilter {
+  type: AnalysisType
+  startDate: Date
+  endDate: Date
+}
+
+input CreateAnalysisInput {
+  type: AnalysisType!
+  name: String!
+  dateTaken: Date!
+  file: Upload!
+  nextReminderDate: Date
+}
+
+input UpdateAnalysisInput {
+  type: AnalysisType
+  name: String
+  dateTaken: Date
+  file: Upload
+  nextReminderDate: Date
+}
+
+type AnalysisConnection {
+  edges: [AnalysisEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AnalysisEdge {
+  node: Analysis!
+  cursor: String!
+}
+
+# Medication Types
+type Medication {
+  id: ID!
+  userId: ID!
+  name: String!
+  dosage: String!
+  scheduleType: ScheduleType!
+  scheduleDetails: ScheduleDetails!
+  startDate: Date!
+  endDate: Date
+  isActive: Boolean!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum ScheduleType {
+  DAILY
+  WEEKLY
+  AS_NEEDED
+}
+
+type ScheduleDetails {
+  times: [String!]!
+  days: [Int!]
+}
+
+input ScheduleDetailsInput {
+  times: [String!]!
+  days: [Int!]
+}
+
+input CreateMedicationInput {
+  name: String!
+  dosage: String!
+  scheduleType: ScheduleType!
+  scheduleDetails: ScheduleDetailsInput!
+  startDate: Date!
+  endDate: Date
+}
+
+input UpdateMedicationInput {
+  name: String
+  dosage: String
+  scheduleType: ScheduleType
+  scheduleDetails: ScheduleDetailsInput
+  startDate: Date
+  endDate: Date
+  isActive: Boolean
+}
+
+type MedicationIntake {
+  id: ID!
+  medicationId: ID!
+  scheduledTime: Time!
+  takenAt: Time
+  isTaken: Boolean!
+  notes: String
+  createdAt: Time!
+}
+
+input MarkMedicationIntakeInput {
+  medicationId: ID!
+  scheduledTime: Time!
+  isTaken: Boolean!
+  notes: String
+}
+
+# Doctor Visit Types
+type DoctorVisit {
+  id: ID!
+  userId: ID!
+  visitDate: Date!
+  doctorName: String
+  specialty: String
+  questions: String
+  reportGeneratedAt: Time
+  reportData: String
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+input CreateDoctorVisitInput {
+  visitDate: Date!
+  doctorName: String
+  specialty: String
+  questions: String
+}
+
+input UpdateDoctorVisitInput {
+  visitDate: Date
+  doctorName: String
+  specialty: String
+  questions: String
+}
+
+type DoctorVisitConnection {
+  edges: [DoctorVisitEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type DoctorVisitEdge {
+  node: DoctorVisit!
+  cursor: String!
+}
+
+type DoctorVisitReport {
+  visitId: ID!
+  visitDate: Date!
+  period: DateRange!
+  symptoms: [SymptomEntry!]!
+  wellbeingTrend: WellbeingTrend!
+  analyses: [Analysis!]!
+  medications: [Medication!]!
+  questions: String
+  generatedAt: Time!
+}
+
+type DateRange {
+  startDate: Date!
+  endDate: Date!
+}
+
+type WellbeingTrend {
+  average: Float!
+  min: Int!
+  max: Int!
+  dataPoints: [WellbeingDataPoint!]!
+}
+
+type WellbeingDataPoint {
+  date: Date!
+  value: Int!
+}
+
+# Common Types
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
