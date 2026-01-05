@@ -1,51 +1,46 @@
-# Этап сборки
+# Build stage
 FROM golang:1.24-alpine AS builder
 
-# Установка зависимостей для сборки
-RUN apk add --no-cache git make
+WORKDIR /build
 
-# Установка рабочей директории
-WORKDIR /app
-
-# Копирование go mod файлов
+# Copy go mod files
 COPY go.mod go.sum ./
 
-# Загрузка зависимостей
+# Download dependencies
 RUN go mod download
 
-# Копирование исходного кода
+# Copy source code
 COPY . .
 
-# Генерация GraphQL кода
+# Generate GraphQL code
 RUN go run github.com/99designs/gqlgen generate
 
-# Сборка приложения
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/bin/server ./cmd/server
+# Build binaries
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s" -o bin/server ./cmd/server/main.go
 
-# Финальный этап - минимальный образ
+# Runtime stage
 FROM alpine:latest
 
-# Установка CA сертификатов для HTTPS запросов
-RUN apk --no-cache add ca-certificates tzdata
+# Install ca-certificates, netcat (for health checks) and apply security updates
+RUN apk update && \
+    apk --no-cache add ca-certificates netcat-openbsd tzdata && \
+    rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# Копирование бинарного файла из builder
-COPY --from=builder /app/bin/server .
+# Copy binaries from builder
+COPY --from=builder /build/bin/server .
 
-# Копирование миграций (если нужны)
-COPY --from=builder /app/migrations ./migrations
+# Copy migrations directory
+COPY ./migrations ./migrations
 
-# Создание пользователя для запуска приложения
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser && \
-    chown -R appuser:appuser /app
+# Copy entrypoint script
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
-USER appuser
+# Set entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
-# Открытие порта
-EXPOSE 8080
-
-# Команда запуска
+# Run the application
 CMD ["./server"]
 

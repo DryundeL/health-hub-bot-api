@@ -1,30 +1,28 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: healthhub-postgres
+    container_name: healthhub_postgres
     environment:
-      POSTGRES_USER: healthhub
-      POSTGRES_PASSWORD: healthhub
-      POSTGRES_DB: healthhub
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U healthhub"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - healthhub-network
+      - healthhub_network
 
   redis:
     image: redis:7-alpine
-    container_name: healthhub-redis
+    container_name: healthhub_redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -34,54 +32,66 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - healthhub-network
+      - healthhub_network
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: healthhub-api
-    ports:
-      - "8080:8080"
-    environment:
-      # Database
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: healthhub
-      DB_PASSWORD: healthhub
-      DB_NAME: healthhub
-      DB_SSLMODE: disable
-      DB_TIMEZONE: UTC
-      DATABASE_MAX_OPEN_CONNS: 25
-      DATABASE_MAX_IDLE_CONNS: 5
-      DATABASE_LOG_LEVEL: info
-      # Server
-      PORT: 8080
-      HOST: ""
-      # Telegram (заполните при необходимости)
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      # Storage
-      STORAGE_TYPE: local
-      STORAGE_PATH: ./storage
-      # Redis (если используется)
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+    container_name: healthhub_app
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Переопределяем только те переменные, которые специфичны для контейнера
+      DB_HOST: postgres  # Имя сервиса в docker-compose сети
+      DB_PORT: "5432"  # Внутренний порт PostgreSQL в Docker сети
+      REDIS_HOST: redis  # Имя сервиса Redis в docker-compose сети
+      REDIS_PORT: "6379"  # Внутренний порт Redis в Docker сети
+    ports:
+      - "${APP_PORT:-8080}:8080"
     volumes:
+      # Mount migrations for development (optional)
+      - ./migrations:/app/migrations:ro
       - ./storage:/app/storage
     networks:
-      - healthhub-network
+      - healthhub_network
     restart: unless-stopped
+
+  # Optional: Separate migrator service for manual migrations
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healthhub_migrator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Переопределяем только те переменные, которые специфичны для контейнера
+      DB_HOST: postgres  # Имя сервиса в docker-compose сети
+      DB_PORT: "5432"  # Внутренний порт PostgreSQL в Docker сети
+    command: ["./migrator", "-command=up"]
+    volumes:
+      - ./migrations:/app/migrations:ro
+    networks:
+      - healthhub_network
+    profiles:
+      - tools  # Only start with: docker-compose --profile tools up migrator
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
 
 networks:
-  healthhub-network:
+  healthhub_network:
     driver: bridge
 
